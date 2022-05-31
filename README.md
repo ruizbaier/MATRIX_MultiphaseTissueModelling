@@ -4,12 +4,15 @@
 Finite element simulation of two-phase models for general tissue-like structures. 
 
 ## Context 
-Group discussions on multiphase tissue modelling. Group participants:
+Group discussions on multiphase tissue modelling as part of the ![MATRIX program on the Mathematics of Tissue Dynamics](https://www.matrix-inst.org.au/events/mathematics-of-tissue-dynamics)
+
+Group participants:
   - Adriana Zanca
   - Ishraq Ahmed
+  - Joshua Won
+  - Alexander Browning
   - Jennifer Flegg
   - Ricardo Ruiz Baier
-  - ...
 
 ## Steps 
 Rewriting the Eulerian 1D formulation from 
