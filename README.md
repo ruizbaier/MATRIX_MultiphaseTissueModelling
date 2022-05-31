@@ -23,8 +23,9 @@ Rewriting the Eulerian 1D formulation from
 
 ```
 @rticle{Breward2002,
-  author  = {Breward C and others},
   title   = {The role of cell-cell interactions in a two-phase model for avascular tumour growth},
+  author  = {Breward, CJW and Byrne, HM and Lewis, CE},
+  number  = {2},
   year    = {2002},
   journal = {Journal of Mathematical Biology},
   volume  = {45},
