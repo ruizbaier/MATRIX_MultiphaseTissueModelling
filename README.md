@@ -4,7 +4,7 @@
 Finite element simulation of two-phase models for general tissue-like structures. 
 
 ## Context 
-Group discussions on multiphase tissue modelling as part of the ![MATRIX program on the Mathematics of Tissue Dynamics](https://www.matrix-inst.org.au/events/mathematics-of-tissue-dynamics)
+Group discussions on multiphase tissue modelling as part of the [MATRIX program on the Mathematics of Tissue Dynamics](https://www.matrix-inst.org.au/events/mathematics-of-tissue-dynamics)
 
 Group participants:
   - Adriana Zanca
