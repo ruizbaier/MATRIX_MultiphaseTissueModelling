@@ -7,7 +7,9 @@ alpha is the Lagrangian solid volume fraction
 pw is the interstitial fluid pressure
 eta is the oxygen concentration 
 
-the geometry is simply a quarter of a unit disk. Boundary conditions are of sliding type on the straight segments and of zero-traction on the circular arc
+the geometry is a glioma at a given stage
+
+Boundary conditions are of pure-stress type. Therefore an additional step is needed for sake of uniqueness of solutions 
 
 the equations in strong form read as follows
 
@@ -59,39 +61,43 @@ s3       = Constant(0.5)
 s4       = Constant(10.)
 
 # ******* Define mesh and define function spaces ****** #
-mesh = Mesh("meshes/quarterDisk.xml")
-bdry = bdry = MeshFunction("size_t", mesh, "meshes/quarterDisk_facet_region.xml")
-circ =32; left= 33; bot = 31
+mesh = Mesh("meshes/glioma.xml")
 N = FacetNormal(mesh)
 
 dx = Measure("dx", domain=mesh)
-ds = Measure("ds", subdomain_data = bdry)
+#ds = Measure("ds", subdomain_data = bdry)
 
 #output files and options 
-fileO = XDMFFile(mesh.mpi_comm(), "outputs/MultiphaseQuarterDisk.xdmf")
+fileO = XDMFFile(mesh.mpi_comm(), "outputs/MultiphaseGlioma.xdmf")
 fileO.parameters['rewrite_function_mesh']=False
 fileO.parameters["functions_share_mesh"] = True
 fileO.parameters["flush_output"] = True
 
 # ********* Time constants ********* #
 
-t = 0.0; dt = 1.; Tf = 200.; freqSave = 20
+t = 0.0; dt = 0.5; Tf = 100.; freqSave = 20
 
 # ********* Finite dimensional spaces ********* #
 
 P1 = FiniteElement("CG", mesh.ufl_cell(), 1)
 Bub  = FiniteElement("Bubble", mesh.ufl_cell(), 3)
 P1b  = VectorElement(P1 + Bub)
+RM   = VectorElement('R', triangle, 0, dim=3)
 #P2v = VectorElement("CG", mesh.ufl_cell(), 2)
-Hh = FunctionSpace(mesh,MixedElement([P1b, P1, P1, P1]))
+Hh = FunctionSpace(mesh,MixedElement([P1b, P1, P1, P1, RM]))
+
+
+nullspace=[Constant((1,0)), Constant((0,1)),\
+               Expression(('-x[1]','x[0]'),degree = 1)]
+
 
 print("**************** Total DoFs = ", Hh.dim())
 
 # trial and test functions
 
 Sol  = Function(Hh); dSol = TrialFunction(Hh); dTest = TestFunction(Hh)
-dc,           alpha,      pw,      C = split(Sol)
-dc_test, alpha_test, pw_test, C_test = split(dTest)
+dc,           alpha,      pw,      C, s_chi = split(Sol)
+dc_test, alpha_test, pw_test, C_test, s_xi  = split(dTest)
 
 # ********* Initial conditions ******* #
 
@@ -99,14 +105,10 @@ dc_old = interpolate(project(zero,Hh.sub(0).collapse()),Hh.sub(0).collapse())
 alpha_old = interpolate(alpha0,Hh.sub(1).collapse())
 
 # ********* Boundaries and boundary conditions ******* #
-
-bcU1 = DirichletBC(Hh.sub(0).sub(1), project(Constant(0.),Hh.sub(0).sub(1).collapse()), bdry, bot)
-bcU2 = DirichletBC(Hh.sub(0).sub(0), project(Constant(0.),Hh.sub(0).sub(0).collapse()), bdry, left)
-bcP  = DirichletBC(Hh.sub(2), pwout, bdry, circ)
-
-bcE  = DirichletBC(Hh.sub(3), Cout, bdry, circ)
-bcs = [bcU1,bcU2,bcP,bcE]
-
+# Pure traction for the mechanics, pure Dirichlet for pressure and oxygen
+bcP  = DirichletBC(Hh.sub(2), pwout, 'on_boundary')
+bcE  = DirichletBC(Hh.sub(3), Cout, 'on_boundary')
+bcs = [bcP,bcE]
 
 # ******** Define hyperelastic quantities  ************* #
 
@@ -132,6 +134,13 @@ FF = inner(P, grad(dc_test)) * dx \
      + dot(Jc*inv(Cc)*grad(C),grad(C_test))*dx \
      - Jc*f(alpha,C)*C_test * dx
 
+for i, ns_i in enumerate(nullspace):
+    chi = s_chi[i]
+    xi  = s_xi[i]
+    FF += chi*inner(dc_test, ns_i)*dx + xi*inner(dc, ns_i)*dx
+
+
+
 Tang = derivative(FF, Sol, dSol)
 problem = NonlinearVariationalProblem(FF, Sol, bcs, J=Tang)
 solver  = NonlinearVariationalSolver(problem)
@@ -149,7 +158,7 @@ while (t <= Tf):
     print("t=%.3f" % t)
 
     solver.solve()
-    dch,alphah,pwh,Ch = Sol.split()
+    dch,alphah,pwh,Ch, chih = Sol.split()
     assign(alpha_old,alphah)
     assign(dc_old,dch)
     
