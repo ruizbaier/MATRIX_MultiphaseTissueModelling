@@ -46,7 +46,7 @@ alphamin = Constant(0.8)
 alphastar= Constant(0.8)
 alpha0   = Constant(0.8)
 mu       = Constant(1.)
-lmbda    = Constant(1.)
+lmbda    = Constant(0.)
 pwout    = Constant(0.)
 Cout     = Constant(1.)
 k        = Constant(1.)
@@ -57,6 +57,8 @@ s1       = Constant(10.)
 s2       = Constant(0.5)
 s3       = Constant(0.5)
 s4       = Constant(10.)
+
+eps = Constant(1.e-4) # needed for stability 
 
 # ******* Define mesh and define function spaces ****** #
 mesh = Mesh("meshes/quarterDisk.xml")
@@ -73,9 +75,11 @@ fileO.parameters['rewrite_function_mesh']=False
 fileO.parameters["functions_share_mesh"] = True
 fileO.parameters["flush_output"] = True
 
+outfile = open("area_evolution_quarterDisk.txt","w")
+
 # ********* Time constants ********* #
 
-t = 0.0; dt = 1.; Tf = 200.; freqSave = 20
+t = 0.0; dt = 0.5; Tf = 60.; freqSave = 2
 
 # ********* Finite dimensional spaces ********* #
 
@@ -122,13 +126,13 @@ Pc = diff(Wc,Fc)
 # total stress (assuming an active stress approach)
 P = Pc - (pw + alpha*Sigma(alpha)) * Jc * invFc.T
 
-# ********  Weak form ********** #
+# ********  Weak form  of the nonlinear problem ********** #
      
 FF = inner(P, grad(dc_test)) * dx \
      + ((Jc-Jc_fun(dc_old))*alpha+(alpha-alpha_old)*Jc)/dt * alpha_test * dx \
      - Jc*qc(alpha,C) * alpha_test * dx \
      + (Jc-Jc_fun(dc_old))/dt*pw_test * dx \
-     + dot(Jc/k*inv(Cc)*grad(pw),grad(pw_test)) * dx \
+     + dot(Jc/(eps+alpha*k)*inv(Cc)*grad(pw),grad(pw_test)) * dx \
      + dot(Jc*inv(Cc)*grad(C),grad(C_test))*dx \
      - Jc*f(alpha,C)*C_test * dx
 
@@ -142,7 +146,7 @@ solver.parameters['newton_solver']['relative_tolerance'] = 1e-6
 solver.parameters['newton_solver']['maximum_iterations'] = 12
 
 # ************* Time loop ********** #
-inc = 0;
+inc = 0; area =[]
 
 while (t <= Tf):
 
@@ -152,6 +156,11 @@ while (t <= Tf):
     dch,alphah,pwh,Ch = Sol.split()
     assign(alpha_old,alphah)
     assign(dc_old,dch)
+
+    # compute area of deformed domain 
+    area_after = assemble(det(Identity(ndim) + grad(dch))*dx)
+    area.append(area_after)
+    print(float(t), area[inc], file = outfile)
     
     if (inc % freqSave == 0):
         
